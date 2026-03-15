@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 
 import gspread
@@ -13,9 +12,7 @@ SCOPES = [
 
 
 def get_gspread_client():
-    service_account_info = json.loads(
-        st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"]
-    )
+    service_account_info = dict(st.secrets["gcp_service_account"])
 
     credentials = Credentials.from_service_account_info(
         service_account_info,
