@@ -56,41 +56,46 @@ if st.button("Write Simple Test Row"):
     except Exception as e:
         st.error(f"Failed to write test row: {e}")
 
-st.subheader("Write Real Top Topic to Sheet")
+st.subheader("Write Real Topics to Sheet")
 
-if st.button("Write Highest Velocity Topic"):
+if st.button("Write Top 10 Highest Velocity Topics"):
     try:
         all_results = []
 
         for keyword in KEYWORDS_TO_SCAN:
             keyword_results = scan_keyword(youtube, keyword, max_results=25)
-            all_results.extend(keyword_results[:5])
+            all_results.extend(keyword_results[:10])
 
         competitor_results = scan_competitors(youtube, max_results_per_channel=8)
-        all_results.extend(competitor_results[:10])
+        all_results.extend(competitor_results[:15])
 
         all_results = sorted(all_results, key=lambda x: x["velocity"], reverse=True)
 
         if not all_results:
             st.warning("No topics found.")
         else:
-            top_topic = all_results[0]
+            top_topics = all_results[:10]
 
-            topic_data = {
-                "source": top_topic.get("source_type", ""),
-                "keyword": top_topic.get("keyword", ""),
-                "player": "Alex Eala",
-                "title": top_topic.get("title", ""),
-                "channel": top_topic.get("channel", ""),
-                "views": top_topic.get("views", ""),
-                "velocity": top_topic.get("velocity", ""),
-                "subscribers": "",
-                "url": top_topic.get("link", ""),
-            }
+            written_count = 0
 
-            append_topic_row("Tennis Outlier Tracker", topic_data, "Daily Topics")
-            st.success("Highest velocity topic written to Google Sheet successfully.")
-            st.write(topic_data)
+            for topic in top_topics:
+                topic_data = {
+                    "source": topic.get("source_type", ""),
+                    "keyword": topic.get("keyword", ""),
+                    "player": "Alex Eala",
+                    "title": topic.get("title", ""),
+                    "channel": topic.get("channel", ""),
+                    "views": topic.get("views", ""),
+                    "velocity": topic.get("velocity", ""),
+                    "subscribers": "",
+                    "url": topic.get("link", ""),
+                }
+
+                append_topic_row("Tennis Outlier Tracker", topic_data, "Daily Topics")
+                written_count += 1
+
+            st.success(f"{written_count} highest velocity topics written to Google Sheet successfully.")
+            st.dataframe(top_topics, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Failed to write highest velocity topic: {e}")
+        st.error(f"Failed to write top topics: {e}")
