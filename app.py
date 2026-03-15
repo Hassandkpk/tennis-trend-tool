@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from googleapiclient.discovery import build
 from datetime import datetime, timezone
+import isodate
 
 from competitors import COMPETITOR_CHANNELS
 
@@ -32,6 +33,11 @@ def calculate_velocity(video: dict):
     return views, round(hours_since_upload, 2), int(velocity)
 
 
+def get_duration_seconds(video: dict):
+    duration_str = video.get("contentDetails", {}).get("duration", "PT0S")
+    return int(isodate.parse_duration(duration_str).total_seconds())
+
+
 def search_videos(query: str, max_results: int = 25):
     search_response = youtube.search().list(
         q=query,
@@ -49,7 +55,7 @@ def search_videos(query: str, max_results: int = 25):
         return []
 
     video_response = youtube.videos().list(
-        part="snippet,statistics",
+        part="snippet,statistics,contentDetails",
         id=",".join(video_ids)
     ).execute()
 
@@ -94,7 +100,7 @@ def get_recent_videos_from_channel(channel_id: str, max_results: int = 10):
         return []
 
     video_response = youtube.videos().list(
-        part="snippet,statistics",
+        part="snippet,statistics,contentDetails",
         id=",".join(video_ids)
     ).execute()
 
@@ -118,6 +124,11 @@ with tab1:
             rows = []
 
             for video in videos:
+                duration_seconds = get_duration_seconds(video)
+
+                if duration_seconds <= 60:
+                    continue
+
                 title = video["snippet"]["title"]
                 channel = video["snippet"]["channelTitle"]
                 video_id = video["id"]
@@ -134,9 +145,19 @@ with tab1:
                     "Link": link
                 })
 
-            df = pd.DataFrame(rows)
-            df = df.sort_values(by="Velocity", ascending=False).reset_index(drop=True)
-            st.dataframe(df, use_container_width=True)
+            if not rows:
+                st.warning("No non-Shorts videos found.")
+            else:
+                df = pd.DataFrame(rows)
+                df = df.sort_values(by="Velocity", ascending=False).reset_index(drop=True)
+
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    column_config={
+                        "Link": st.column_config.LinkColumn("Video Link")
+                    }
+                )
 
 with tab2:
     st.subheader("Competitor Scanner")
@@ -158,6 +179,11 @@ with tab2:
                 videos = get_recent_videos_from_channel(channel_id, max_results=8)
 
                 for video in videos:
+                    duration_seconds = get_duration_seconds(video)
+
+                    if duration_seconds <= 60:
+                        continue
+
                     title = video["snippet"]["title"]
                     channel = video["snippet"]["channelTitle"]
                     video_id = video["id"]
@@ -180,4 +206,11 @@ with tab2:
         else:
             df = pd.DataFrame(all_rows)
             df = df.sort_values(by="Velocity", ascending=False).reset_index(drop=True)
-            st.dataframe(df, use_container_width=True)
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                column_config={
+                    "Link": st.column_config.LinkColumn("Video Link")
+                }
+            )
