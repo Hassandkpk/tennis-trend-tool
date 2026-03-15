@@ -51,7 +51,7 @@ st.subheader("Google Sheets Test")
 
 if st.button("Write Simple Test Row"):
     try:
-        write_test_row("Tennis Outlier Tracker", "Daily Topics")
+        write_test_row("Tennis Sheet", "Topics")
         st.success("Simple test row written to Google Sheet successfully.")
     except Exception as e:
         st.error(f"Failed to write test row: {e}")
@@ -91,7 +91,7 @@ if st.button("Write Top 10 Highest Velocity Topics"):
                     "url": topic.get("link", ""),
                 }
 
-                append_topic_row("Tennis Outlier Tracker", topic_data, "Daily Topics")
+                append_topic_row("Tennis Sheet", topic_data, "Topics")
                 written_count += 1
 
             st.success(f"{written_count} highest velocity topics written to Google Sheet successfully.")
