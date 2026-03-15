@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-
+from sheet_writer import append_test_row
 from scanner import get_youtube_client, scan_keyword, scan_competitors
 
 st.set_page_config(page_title="Pipeline Tester", page_icon="🧪", layout="wide")
@@ -44,3 +44,11 @@ if st.button("Run Test Pipeline"):
     st.subheader("Top Combined Results")
     all_results = sorted(all_results, key=lambda x: x["velocity"], reverse=True)
     st.dataframe(all_results[:10], use_container_width=True)
+    st.subheader("Google Sheets Test")
+
+if st.button("Write Test Row to Sheet"):
+    try:
+        append_test_row("Tennis Outlier Tracker", "Daily Topics")
+        st.success("Test row written to Google Sheet successfully.")
+    except Exception as e:
+        st.error(f"Failed to write test row: {e}")
