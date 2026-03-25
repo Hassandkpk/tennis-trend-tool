@@ -1,7 +1,6 @@
 streamlit
-pandas
+anthropic
 google-api-python-client
-python-dotenv
-isodate
 gspread
 google-auth
+isodate
