@@ -321,12 +321,24 @@ if st.button("Run Full Pipeline"):
 
 st.divider()
 
-# ── SECTION 3: Sheet test ─────────────────────────────────────────────────────
-st.subheader("🧪 Google Sheets Test")
+
+st.divider()
+
+# ── SECTION 3: Sheet debug test ───────────────────────────────────────────────
+st.subheader("🧪 Google Sheets Debug Test")
 
 if st.button("Write Simple Test Row"):
     try:
-        write_test_row(SHEET_NAME, SHEET_TAB)
-        st.success(f"Test row written to: {SHEET_TAB}")
+        from sheet_writer import get_gspread_client
+        st.write("Step 1: Connecting to Google Sheets...")
+        client = get_gspread_client()
+        st.write("Step 2: Connected. Opening sheet...")
+        sheet = client.open(SHEET_NAME)
+        tabs = [ws.title for ws in sheet.worksheets()]
+        st.write(f"Step 3: Sheet opened. Tabs found: **{tabs}**")
+        worksheet = sheet.worksheet(SHEET_TAB)
+        st.write(f"Step 4: Tab **{SHEET_TAB}** found. Writing row...")
+        worksheet.append_row(["TEST", "test", "outlier", "TestChannel", "keyword", "TEST TITLE", "", "TestChannel", 999, 24, 10, "https://youtube.com", "", "", "", "", "", ""])
+        st.success(f"✅ Row written successfully to **{SHEET_TAB}**! Check your sheet now.")
     except Exception as e:
-        st.error(f"Failed: {e}")
+        st.error(f"❌ FAILED: {e}")
