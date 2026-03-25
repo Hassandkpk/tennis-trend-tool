@@ -19,47 +19,50 @@ def get_gspread_client():
 
 
 def append_topic_row(sheet_name, topic_data, worksheet_name="Daily Topics"):
+    """
+    Matches sheet columns exactly:
+    Date | Source | Type | Competitor | Keyword | Original Title | Generated Title | Channel | Views | Hours Since Upload | Velocity | Link | Variant 1 | Variant 2 | Variant 3 | Variant 4 | Picked? | Notes
+    """
     client = get_gspread_client()
     sheet = client.open(sheet_name)
     worksheet = sheet.worksheet(worksheet_name)
 
     row = [
-        topic_data.get("date", datetime.now().strftime("%Y-%m-%d")),
-        topic_data.get("source", ""),
-        topic_data.get("keyword", ""),
-        topic_data.get("player", ""),
-        topic_data.get("type", "outlier"),          # NEW: outlier / viral_repeat / outlier_remix
-        topic_data.get("title", ""),                # original title (source video)
-        topic_data.get("generated_title", ""),      # NEW: Claude-generated topic
-        topic_data.get("channel", ""),
-        topic_data.get("views", ""),
-        topic_data.get("velocity", ""),
-        topic_data.get("subscribers", ""),
-        topic_data.get("url", ""),
-        "",  # Claude title variation 1
-        "",  # Claude title variation 2
-        "",  # Claude title variation 3
-        "",  # Claude title variation 4
-        "",  # chosen title
-        "new"  # status
+        topic_data.get("date", datetime.now().strftime("%Y-%m-%d")),  # Date
+        topic_data.get("source", ""),                                  # Source
+        topic_data.get("type", "outlier"),                             # Type
+        topic_data.get("channel", ""),                                 # Competitor/Channel
+        topic_data.get("keyword", ""),                                 # Keyword
+        topic_data.get("title", ""),                                   # Original Title
+        topic_data.get("generated_title", ""),                         # Generated Title (Claude)
+        topic_data.get("channel", ""),                                 # Channel
+        topic_data.get("views", ""),                                   # Views
+        topic_data.get("hours_since_upload", ""),                      # Hours Since Upload
+        topic_data.get("velocity", ""),                                # Velocity
+        topic_data.get("url", ""),                                     # Link
+        "",                                                            # Variant 1
+        "",                                                            # Variant 2
+        "",                                                            # Variant 3
+        "",                                                            # Variant 4
+        "",                                                            # Picked?
+        "",                                                            # Notes
     ]
 
     worksheet.append_row(row, value_input_option="USER_ENTERED")
 
 
-def write_test_row(sheet_name="Tennis Outlier Tracker", worksheet_name="Daily Topics"):
+def write_test_row(sheet_name="Tennis Sheet", worksheet_name="Topics"):
     topic = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "source": "test",
-        "keyword": "alex eala",
-        "player": "Alex Eala",
         "type": "outlier",
+        "keyword": "alex eala",
         "title": "TEST TITLE",
         "generated_title": "",
         "channel": "Test Channel",
         "views": 12345,
+        "hours_since_upload": 24,
         "velocity": 4.2,
-        "subscribers": 2939,
-        "url": "https://youtube.com"
+        "url": "https://youtube.com",
     }
     append_topic_row(sheet_name, topic, worksheet_name)
