@@ -184,33 +184,41 @@ if st.button("Run Full Pipeline"):
     else:
         st.warning("No outliers found.")
 
-    # ── STEP 2: Viral Repeats — our own channels ──────────────────────────────
+    # ── STEP 2: Viral Repeats — top 1 most viewed video per own channel ───────
     with st.spinner(f"Step 2/3 — Fetching your own top videos & generating viral repeats..."):
-        own_results = scan_competitors(youtube, OWN_CHANNELS, max_results_per_channel=8)
-        own_results = filter_titles(own_results)
-        own_results = sorted(own_results, key=lambda x: x["velocity"], reverse=True)
-        top_own = own_results[:5]
-
         viral_repeat_rows = []
-        for video in top_own:
+
+        for channel in OWN_CHANNELS:
             try:
-                generated = generate_viral_repeat(claude, video["title"], PLAYER_NAME)
+                channel_results = scan_competitors(youtube, [channel], max_results_per_channel=10)
+                channel_results = filter_titles(channel_results)
+                channel_results = sorted(channel_results, key=lambda x: x["views"], reverse=True)
+
+                if not channel_results:
+                    st.warning(f"No videos found for {channel['name']}")
+                    continue
+
+                top_video = channel_results[0]
+                st.write(f"📺 {channel['name']} → **{top_video['title']}**")
+
+                generated = generate_viral_repeat(claude, top_video["title"], PLAYER_NAME)
                 viral_repeat_rows.append({
                     "date": today,
                     "source": "own_channel",
                     "keyword": "",
                     "player": PLAYER_NAME,
                     "type": "viral_repeat",
-                    "title": video["title"],
+                    "title": top_video["title"],
                     "generated_title": generated,
-                    "channel": video["channel"],
-                    "views": video["views"],
-                    "velocity": video["velocity"],
-                    "subscribers": video["subscribers"],
-                    "url": video["link"],
+                    "channel": top_video["channel"],
+                    "views": top_video["views"],
+                    "velocity": top_video["velocity"],
+                    "subscribers": top_video["subscribers"],
+                    "url": top_video["link"],
                 })
+
             except Exception as e:
-                st.warning(f"Claude error on viral repeat: {e}")
+                st.warning(f"Error on {channel['name']}: {e}")
 
     if viral_repeat_rows:
         st.success(f"✅ Generated {len(viral_repeat_rows)} viral repeats")
@@ -222,7 +230,7 @@ if st.button("Run Full Pipeline"):
     # ── STEP 3: Outlier Remixes — top 5 outliers → new angles ─────────────────
     with st.spinner("Step 3/3 — Generating outlier remixes with Claude..."):
         outlier_remix_rows = []
-        for video in top_outliers[:5]:
+        for video in top_outliers[:10]:
             try:
                 generated = generate_outlier_remix(claude, video["title"], PLAYER_NAME)
                 outlier_remix_rows.append({
@@ -254,31 +262,40 @@ if st.button("Run Full Pipeline"):
 
         # Write outliers
         for video in top_outliers:
-            append_topic_row(SHEET_NAME, {
-                "date": today,
-                "source": video.get("source_type", ""),
-                "keyword": video.get("keyword", ""),
-                "player": PLAYER_NAME,
-                "type": "outlier",
-                "title": video["title"],
-                "generated_title": "",
-                "channel": video["channel"],
-                "views": video["views"],
-                "velocity": video["velocity"],
-                "subscribers": video["subscribers"],
-                "url": video["link"],
-            }, SHEET_TAB)
-            all_written += 1
+            try:
+                append_topic_row(SHEET_NAME, {
+                    "date": today,
+                    "source": video.get("source_type", ""),
+                    "keyword": video.get("keyword", ""),
+                    "player": PLAYER_NAME,
+                    "type": "outlier",
+                    "title": video["title"],
+                    "generated_title": "",
+                    "channel": video["channel"],
+                    "views": video["views"],
+                    "velocity": video["velocity"],
+                    "subscribers": video["subscribers"],
+                    "url": video["link"],
+                }, SHEET_TAB)
+                all_written += 1
+            except Exception as e:
+                st.warning(f"Failed to write outlier row: {video.get('title','?')} — {e}")
 
         # Write viral repeats
         for row in viral_repeat_rows:
-            append_topic_row(SHEET_NAME, row, SHEET_TAB)
-            all_written += 1
+            try:
+                append_topic_row(SHEET_NAME, row, SHEET_TAB)
+                all_written += 1
+            except Exception as e:
+                st.warning(f"Failed to write viral_repeat row: {row.get('title','?')} — {e}")
 
         # Write outlier remixes
         for row in outlier_remix_rows:
-            append_topic_row(SHEET_NAME, row, SHEET_TAB)
-            all_written += 1
+            try:
+                append_topic_row(SHEET_NAME, row, SHEET_TAB)
+                all_written += 1
+            except Exception as e:
+                st.warning(f"Failed to write outlier_remix row: {row.get('title','?')} — {e}")
 
     st.success(f"🎉 Done! {all_written} total topics written to **{SHEET_TAB}**")
     st.markdown(f"- **Outliers:** {len(top_outliers)}")
