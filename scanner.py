@@ -49,21 +49,38 @@ def search_videos(youtube, query: str, max_results: int = 25):
 
 def get_channel_id_from_handle(youtube, handle: str):
     clean_handle = handle.replace("@", "")
-    response = youtube.search().list(
-        q=clean_handle,
-        part="snippet",
-        type="channel",
-        maxResults=5
-    ).execute()
 
-    for item in response.get("items", []):
-        title = item["snippet"]["title"].lower()
-        custom = item["snippet"].get("customUrl", "").lower()
-        if clean_handle.lower() in custom or clean_handle.lower() in title:
-            return item["snippet"]["channelId"]
+    # Primary: use forHandle — the correct API param for @handle lookups
+    try:
+        response = youtube.channels().list(
+            part="id,snippet",
+            forHandle=clean_handle
+        ).execute()
 
-    if response.get("items"):
-        return response["items"][0]["snippet"]["channelId"]
+        items = response.get("items", [])
+        if items:
+            return items[0]["id"]
+    except Exception:
+        pass
+
+    # Fallback: search-based resolution
+    try:
+        response = youtube.search().list(
+            q=clean_handle,
+            part="snippet",
+            type="channel",
+            maxResults=5
+        ).execute()
+
+        for item in response.get("items", []):
+            custom = item["snippet"].get("customUrl", "").lower()
+            if clean_handle.lower() in custom:
+                return item["snippet"]["channelId"]
+
+        if response.get("items"):
+            return response["items"][0]["snippet"]["channelId"]
+    except Exception:
+        pass
 
     return None
 
