@@ -50,13 +50,12 @@ def search_videos(youtube, query: str, max_results: int = 25):
 def get_channel_id_from_handle(youtube, handle: str):
     clean_handle = handle.replace("@", "")
 
-    # Primary: use forHandle — the correct API param for @handle lookups
+    # Primary: forHandle is the correct API param for @handle lookups
     try:
         response = youtube.channels().list(
             part="id,snippet",
             forHandle=clean_handle
         ).execute()
-
         items = response.get("items", [])
         if items:
             return items[0]["id"]
@@ -71,12 +70,10 @@ def get_channel_id_from_handle(youtube, handle: str):
             type="channel",
             maxResults=5
         ).execute()
-
         for item in response.get("items", []):
             custom = item["snippet"].get("customUrl", "").lower()
             if clean_handle.lower() in custom:
                 return item["snippet"]["channelId"]
-
         if response.get("items"):
             return response["items"][0]["snippet"]["channelId"]
     except Exception:
@@ -86,16 +83,17 @@ def get_channel_id_from_handle(youtube, handle: str):
 
 
 def get_uploads_playlist_id(youtube, channel_id: str):
-    response = youtube.channels().list(
-        part="contentDetails",
-        id=channel_id
-    ).execute()
-
-    items = response.get("items", [])
-    if not items:
+    try:
+        response = youtube.channels().list(
+            part="contentDetails",
+            id=channel_id
+        ).execute()
+        items = response.get("items", [])
+        if not items:
+            return None
+        return items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    except Exception:
         return None
-
-    return items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
 
 
 def get_recent_videos_from_channel(youtube, channel_id: str, max_results: int = 10):
@@ -103,11 +101,14 @@ def get_recent_videos_from_channel(youtube, channel_id: str, max_results: int = 
     if not uploads_playlist_id:
         return []
 
-    playlist_response = youtube.playlistItems().list(
-        part="snippet",
-        playlistId=uploads_playlist_id,
-        maxResults=max_results
-    ).execute()
+    try:
+        playlist_response = youtube.playlistItems().list(
+            part="snippet",
+            playlistId=uploads_playlist_id,
+            maxResults=max_results
+        ).execute()
+    except Exception:
+        return []
 
     video_ids = []
     for item in playlist_response.get("items", []):
@@ -118,10 +119,13 @@ def get_recent_videos_from_channel(youtube, channel_id: str, max_results: int = 
     if not video_ids:
         return []
 
-    video_response = youtube.videos().list(
-        part="snippet,statistics,contentDetails",
-        id=",".join(video_ids)
-    ).execute()
+    try:
+        video_response = youtube.videos().list(
+            part="snippet,statistics,contentDetails",
+            id=",".join(video_ids)
+        ).execute()
+    except Exception:
+        return []
 
     return video_response.get("items", [])
 
@@ -146,20 +150,23 @@ def get_subscriber_counts(youtube, channel_ids):
     for i in range(0, len(unique_ids), chunk_size):
         chunk = unique_ids[i:i + chunk_size]
 
-        response = youtube.channels().list(
-            part="statistics,snippet",
-            id=",".join(chunk),
-            maxResults=len(chunk)
-        ).execute()
+        try:
+            response = youtube.channels().list(
+                part="statistics,snippet",
+                id=",".join(chunk),
+                maxResults=len(chunk)
+            ).execute()
 
-        for item in response.get("items", []):
-            cid = item["id"]
-            subs = int(item.get("statistics", {}).get("subscriberCount", 0))
-            title = item.get("snippet", {}).get("title", "")
-            subscriber_map[cid] = {
-                "subscribers": subs,
-                "channel_title": title
-            }
+            for item in response.get("items", []):
+                cid = item["id"]
+                subs = int(item.get("statistics", {}).get("subscriberCount", 0))
+                title = item.get("snippet", {}).get("title", "")
+                subscriber_map[cid] = {
+                    "subscribers": subs,
+                    "channel_title": title
+                }
+        except Exception:
+            pass
 
     return subscriber_map
 
@@ -205,41 +212,45 @@ def scan_competitors(youtube, competitor_channels, max_results_per_channel: int 
     for competitor in competitor_channels:
         name = competitor.get("name", "")
 
-        if "channel_id" in competitor:
-            channel_id = competitor["channel_id"]
-        else:
-            handle = competitor["handle"]
-            channel_id = get_channel_id_from_handle(youtube, handle)
+        try:
+            if "channel_id" in competitor:
+                channel_id = competitor["channel_id"]
+            else:
+                handle = competitor["handle"]
+                channel_id = get_channel_id_from_handle(youtube, handle)
 
-        if not channel_id:
-            continue
+            if not channel_id:
+                continue
 
-        videos = get_recent_videos_from_channel(youtube, channel_id, max_results=max_results_per_channel)
-        videos = filter_long_videos(videos)
+            videos = get_recent_videos_from_channel(youtube, channel_id, max_results=max_results_per_channel)
+            videos = filter_long_videos(videos)
 
-        subscriber_map = get_subscriber_counts(youtube, [channel_id])
-        channel_subscribers = subscriber_map.get(channel_id, {}).get("subscribers", 0)
+            subscriber_map = get_subscriber_counts(youtube, [channel_id])
+            channel_subscribers = subscriber_map.get(channel_id, {}).get("subscribers", 0)
 
-        for video in videos:
-            title = video["snippet"]["title"]
-            channel = video["snippet"]["channelTitle"]
-            video_id = video["id"]
-            link = f"https://www.youtube.com/watch?v={video_id}"
+            for video in videos:
+                title = video["snippet"]["title"]
+                channel = video["snippet"]["channelTitle"]
+                video_id = video["id"]
+                link = f"https://www.youtube.com/watch?v={video_id}"
 
-            views, hours_since_upload, velocity = calculate_velocity(video)
+                views, hours_since_upload, velocity = calculate_velocity(video)
 
-            all_rows.append({
-                "source_type": "competitor",
-                "competitor": name,
-                "keyword": "",
-                "title": title,
-                "channel": channel,
-                "channel_id": channel_id,
-                "views": views,
-                "hours_since_upload": hours_since_upload,
-                "velocity": velocity,
-                "subscribers": channel_subscribers,
-                "link": link,
-            })
+                all_rows.append({
+                    "source_type": "competitor",
+                    "competitor": name,
+                    "keyword": "",
+                    "title": title,
+                    "channel": channel,
+                    "channel_id": channel_id,
+                    "views": views,
+                    "hours_since_upload": hours_since_upload,
+                    "velocity": velocity,
+                    "subscribers": channel_subscribers,
+                    "link": link,
+                })
+
+        except Exception:
+            continue  # skip any channel that fails, don't crash the whole scan
 
     return sorted(all_rows, key=lambda x: x["velocity"], reverse=True)
