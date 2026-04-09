@@ -85,7 +85,7 @@ def generate_outlier_remix(claude_client, outlier_title, player_name):
 A competitor's video is going viral with this title:
 "{outlier_title}"
 
-Your task: Generate a BRAND NEW YouTube title inspired by the same emotional angle and viral hook, but with a completely different storyline, event, or framing. Do NOT copy or rephrase — create something entirely new that captures the same energy.
+Your task: Generate a BRAND NEW YouTube title inspired by the same emotional angle and viral hook, but with a completely different storyline, event, or framing. But Keep the person of evet the same in new outlier remix as well. For example if origianl contains nadal shocked, that's an opinion and that's why it went viral, our remix will keep that format and create a  new topic.Do NOT copy or rephrase — create something entirely new that captures the same energy.
 
 Rules:
 - Output ONLY the new title, nothing else
