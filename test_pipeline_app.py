@@ -85,20 +85,34 @@ def generate_outlier_remix(claude_client, outlier_title, player_name):
 A competitor's video is going viral with this title:
 "{outlier_title}"
 
-Your task: Generate a BRAND NEW YouTube title inspired by the same emotional angle and viral hook, but with a completely different storyline, event, or framing. Do NOT copy or rephrase — create something entirely new that captures the same energy.
+Generate exactly 3 new YouTube title variants. PRESERVE the core emotional hook, the key people/reactions, and the essential structure — do NOT replace the concept. Only update locations or events to be current (e.g. if original says Germany, change to Spain/Madrid since that's where {player_name} is now).
+
+VARIANT 1 — Slightly Stronger: Same title DNA, same structure, same people — just amplify the emotion or stakes slightly. Change as little as possible.
+
+VARIANT 2 — Unique Concept: Keep the same emotional hook and key people, but find a fresh angle or moment that captures the same energy in a new way.
+
+VARIANT 3 — Rage Bait: Same core topic but reframe it as conflict, outrage, or injustice. Add a villain, a betrayal, or an institution being exposed.
 
 Rules:
-- Output ONLY the new title, nothing else
-- No explanations, no preamble, no quotes around the title
-- Make it rage-baity, dramatic, or emotionally charged
-- It must feel original, not like a remix of the competitor's exact topic"""
+- Output ONLY the 3 titles, one per line, prefixed exactly as: "1.", "2.", "3."
+- No explanations, labels, or extra text
+- Keep {player_name} and any reaction figures (e.g. Navratilova, Sabalenka) from the original
+- Each title must feel like it belongs to the same viral topic family as the original"""
 
     message = claude_client.messages.create(
         model="claude-opus-4-6",
-        max_tokens=200,
+        max_tokens=400,
         messages=[{"role": "user", "content": prompt}]
     )
-    return message.content[0].text.strip()
+    raw = message.content[0].text.strip()
+    variants = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if line.startswith(("1.", "2.", "3.")):
+            variants.append(line[2:].strip())
+    while len(variants) < 3:
+        variants.append("")
+    return variants[:3]
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -244,23 +258,24 @@ if st.button("Run Full Pipeline"):
         for video in top_outliers[:10]:
             try:
                 st.write(f"Remixing: **{video['title']}**")
-                generated = generate_outlier_remix(claude, video["title"], PLAYER_NAME)
-                st.write(f"→ New concept: **{generated}**")
-
-                outlier_remix_rows.append({
-                    "date": today,
-                    "source": video.get("source_type", "competitor"),
-                    "keyword": video.get("keyword", ""),
-                    "player": PLAYER_NAME,
-                    "type": "outlier_remix",
-                    "title": video["title"],
-                    "generated_title": generated,
-                    "channel": video["channel"],
-                    "views": video["views"],
-                    "velocity": video["velocity"],
-                    "subscribers": video["subscribers"],
-                    "url": video["link"],
-                })
+                variants = generate_outlier_remix(claude, video["title"], PLAYER_NAME)
+                labels = ["Slightly Stronger", "Unique Concept", "Rage Bait"]
+                for label, title in zip(labels, variants):
+                    st.write(f"→ **{label}:** {title}")
+                    outlier_remix_rows.append({
+                        "date": today,
+                        "source": video.get("source_type", "competitor"),
+                        "keyword": video.get("keyword", ""),
+                        "player": PLAYER_NAME,
+                        "type": f"outlier_remix_{label.lower().replace(' ', '_')}",
+                        "title": video["title"],
+                        "generated_title": title,
+                        "channel": video["channel"],
+                        "views": video["views"],
+                        "velocity": video["velocity"],
+                        "subscribers": video["subscribers"],
+                        "url": video["link"],
+                    })
 
             except Exception as e:
                 st.error(f"❌ Remix failed for: {video.get('title','?')[:60]} — {e}")
